@@ -206,7 +206,6 @@ void GamesPlayedClassNodeTree :: deleteGamesPlayedTree(GamesPlayedClassNode*& Ro
 void GamesPlayedClassNodeTree :: insertInGamesPlayedTree(GamesPlayedClassNode *& Node,GamesPlayedClassNode *& newNode){
 
     if (Node == nullptr){
-        Node = newNode;
         return;
     }
 
@@ -362,6 +361,7 @@ class playerNode{
     string password;
     playerNode *left;
     playerNode *right;
+    int totalGamesPlayed;
     GamesPlayedClassNodeTree gamePlayed;
 
     playerNode();
@@ -408,6 +408,7 @@ playerNode :: playerNode(string pId,string pName,string pNumber, string mail,str
     phoneNumber = pNumber;
     email = mail;
     password = pass;
+    totalGamesPlayed = 0;
 }
     
 playerNodeTree :: playerNodeTree(){
@@ -544,6 +545,7 @@ void playerNodeTree :: contentsCopy(playerNode*& n1, playerNode*& n2){
     n1->phoneNumber = n2->phoneNumber;
     n1->playerID = n2->playerID;
     n1->playerName = n2->playerName;
+    n1->totalGamesPlayed = n2->totalGamesPlayed;
 }
 
 playerNode* playerNodeTree:: deleteNode(playerNode*& Root,string id){
@@ -663,6 +665,86 @@ class Queue{
 };
 
 
+class players
+{
+    public:
+        string id;
+        int gamesPlayed;
+        players* left;
+        players* right;
+
+    players(string ID, int gp){
+        id = ID;
+        gamesPlayed = gp;
+        left = nullptr;
+        right = nullptr; 
+    }
+};
+
+
+class topNplayers{
+    public:
+    players* root;
+    topNplayers():root(nullptr){}
+
+    void insertInTopNPlayers(players*& playersRoot, string& playerId, int& gamesPlayed){
+        if (playersRoot == nullptr)
+        {
+            playersRoot = new players(playerId,gamesPlayed);
+            return;
+        }
+        else{
+            if (playersRoot->gamesPlayed > gamesPlayed)
+            {
+                insertInTopNPlayers(playersRoot->left, playerId,gamesPlayed);
+            }
+            else if (playersRoot->gamesPlayed < gamesPlayed)
+            {
+                insertInTopNPlayers(playersRoot->right, playerId,gamesPlayed);
+            }
+            else{
+                playersRoot->id += "," + playerId;
+            }            
+        }
+    }
+
+    void inorder(players*& Root, int& n){
+        if (Root == nullptr || n <= 0)
+        {
+            return;
+        }
+        else{
+            inorder(Root->right,n);
+            if (n > 0)
+            {
+                cout << "PLayer with Id: " << Root->id << " has Played: " << Root->gamesPlayed << endl;
+                n--;
+            }
+            inorder(Root->left,n);            
+        }
+    }
+
+    void deleteTopNPlayer(players*& Root){
+        if (Root == nullptr)
+        {
+            return;
+        }
+        
+        else{
+            deleteTopNPlayer(Root->left);
+            deleteTopNPlayer(Root->right);
+            delete Root;
+            Root  = nullptr;
+        }
+    }
+    ~topNplayers(){
+        deleteTopNPlayer(root);
+        root = nullptr;
+    }
+};  
+
+
+
 void setGameTree(GameNodeTree& t){
     ifstream file("Games.txt");
     string line;
@@ -735,14 +817,13 @@ void setPlayerTreeFromTxt(playerNodeTree &p){
             p.insertInPlayerTree(p.root,newPlayerNode);
             while (line.length() > 0)
             {
+                newPlayerNode->totalGamesPlayed++;
                 GamesPlayedClassNode* newNode = new GamesPlayedClassNode(getSubString(line),getSubString(line),getSubString(line));
                 newPlayerNode->gamePlayed.insertInGamesPlayedTree(newPlayerNode->gamePlayed.root,newNode);
             }
         }
         
     }
-    
-    
 }
 
 void setPlayerTreeFromCsv(playerNodeTree &p){
@@ -871,6 +952,8 @@ void showDetails(playerNodeTree &p,GameNodeTree& t){
     }
 }
 
+
+
 void performDeletion(playerNodeTree& p,GameNodeTree& t ){
     
     string playerId = "";
@@ -970,7 +1053,7 @@ void savetoCsv(playerNodeTree& p){
     ofstream file("Players.csv");
     if (! file.is_open()) 
     {
-        cout <<  "file is the present in the destination" << endl;
+        cout <<  "Players.csv file is the present in the destination" << endl;
         return;
     }
     else{
@@ -1039,6 +1122,7 @@ void editInfo(playerNodeTree& p){
     }
 }
 
+
 void showNLayers(playerNode* Root){
     int nLayers;
     cout << "Upto how many layers you want to print: ";
@@ -1095,6 +1179,34 @@ void showNLayers(playerNode* Root){
     }
 }
 
+void insertInTopPlayers(playerNode*& Root, topNplayers& topPlayersRoot){
+    if (Root == nullptr)
+    {
+        return;
+    }
+    else{
+        topPlayersRoot.insertInTopNPlayers(topPlayersRoot.root,Root->playerID,Root->totalGamesPlayed);
+        insertInTopPlayers(Root->left,topPlayersRoot);
+        insertInTopPlayers(Root->right,topPlayersRoot);
+    }
+    
+}
+
+void displayTopN(playerNode*& Root){
+    int n;
+    cout << "How many top players you want to see: ";
+    cin >> n;
+    if (n <= 0)
+    {
+        cout << "Invalid Value of n" << endl;
+        return;
+    }
+    
+    topNplayers p1;
+    insertInTopPlayers(Root,p1);
+    p1.inorder(p1.root,n);
+}
+
 int main(){
     srand(230034);
     GameNodeTree t;
@@ -1109,6 +1221,7 @@ int main(){
     }
     else
         setPlayerTreeFromTxt(p);
+    op = ' ';
     do{
         cout << "\n\n  Available operations a) show details b) delete node c) has played d) Find Layer Number e) Show Path f) Search for a player g) show layer number h) Insert Using Input i) Save Data j) Show N layers k)Edit l) top n plays q) to quit\n";
         cout << "Which operation you want to perform: ";
@@ -1158,6 +1271,9 @@ int main(){
         {
             editInfo(p);
         }
-        
+        else if (op == 'l')
+        {
+            displayTopN(p.root);
+        }  
     }while (op != 'q');
 }
